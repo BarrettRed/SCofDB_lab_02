@@ -147,7 +147,10 @@ async def test_concurrent_payment_safe_prevents_race_condition(db_session, test_
     print(f"✅ RACE CONDITION PREVENTED!")
     print(f"Order {order_id} was paid only ONCE:")
     print(f"  - {history[0]['changed_at']}: status = {history[0]['status']}")
-    print(f"Second attempt was rejected: {results[1]}")
+    
+    for i, result in enumerate(results):
+        if isinstance(result, Exception):
+            print(f"Second attempt was rejected: {type(result).__name__}: {result}")
     # TODO: Реализовать тест, демонстрирующий решение race condition
     #raise NotImplementedError("TODO: Реализовать test_concurrent_payment_safe")
 
@@ -202,7 +205,7 @@ async def test_concurrent_payment_safe_with_explicit_timing():
                 text("SELECT status FROM orders WHERE id = :order_id FOR UPDATE"),
                 {'order_id': str(order_id)}
             )
-            await asyncio.sleep(1)  # задержка
+            await asyncio.sleep(1)  
             await session1.execute(
                 text("UPDATE orders SET status = 'paid' WHERE id = :order_id AND status = 'created'"),
                 {'order_id': str(order_id)}
@@ -228,20 +231,15 @@ async def test_concurrent_payment_safe_with_explicit_timing():
     )
     delta = time.time() - start
 
-    assert delta >= 1, f"итогое время {delta} сек"
+    assert delta >= 1, f"{delta=}с"
 
     success_count = sum(1 for r in results if not isinstance(r, Exception))
     error_count = sum(1 for r in results if isinstance(r, Exception))
     assert success_count == 1
     assert error_count == 1
 
-    print(f"итогое время {delta} сек")
+    print(f"{delta=}с")
 
-    async with AsyncSession(engine) as session:
-        await session.execute(text("DELETE FROM order_status_history WHERE order_id = :id"), {'id': str(order_id)})
-        await session.execute(text("DELETE FROM orders WHERE id = :id"), {'id': str(order_id)})
-        await session.execute(text("DELETE FROM users WHERE id = :id"), {'id': str(user_id)})
-        await session.commit()
 
     await engine.dispose()
     # TODO: Реализовать тест с проверкой блокировки
@@ -302,16 +300,7 @@ async def test_concurrent_payment_safe_multiple_orders():
     )
 
     success_count = sum(1 for r in results if not isinstance(r, Exception))
-    assert success_count == 2, f"кол-во успехов {success_count} != 2"
-
-    async with AsyncSession(engine) as session:
-        await session.execute(text("DELETE FROM order_status_history WHERE order_id = :id"), {'id': str(order_id_1)})
-        await session.execute(text("DELETE FROM order_status_history WHERE order_id = :id"), {'id': str(order_id_2)})
-        await session.execute(text("DELETE FROM orders WHERE id = :id"), {'id': str(order_id_1)})
-        await session.execute(text("DELETE FROM orders WHERE id = :id"), {'id': str(order_id_2)})
-        await session.execute(text("DELETE FROM users WHERE id = :id"), {'id': str(user_id_1)})
-        await session.execute(text("DELETE FROM users WHERE id = :id"), {'id': str(user_id_2)})
-        await session.commit()
+    assert success_count == 2, f"{success_count=} != 2"
     await engine.dispose()
 
     # TODO: Реализовать тест с несколькими заказами

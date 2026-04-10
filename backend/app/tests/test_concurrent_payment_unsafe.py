@@ -65,7 +65,7 @@ async def test_order(db_session, db_engine):
     user_id = uuid.uuid4()
     test_user = {
         "id": user_id,
-        "email": f"test_user_{str(user_id)[:5]}@gmail.com",
+        "email": f"test_user_{str(user_id)[:3]}@gmail.com",
         "name": "Test User"
     }
 
@@ -74,7 +74,7 @@ async def test_order(db_session, db_engine):
         "id": order_id,
         "user_id": user_id,
         "status": "created",
-        "total_amount": 23.0
+        "total_amount": 100.0
     }
 
     async with db_session.begin():
@@ -104,22 +104,6 @@ async def test_order(db_session, db_engine):
             )
         
     yield order_id 
-
-    async with AsyncSession(db_engine) as delete_session:
-        async with delete_session.begin():
-            await delete_session.execute(
-                text("DELETE FROM order_status_history WHERE order_id = :order_id"),
-                {"order_id": order_id}
-            )
-            await delete_session.execute(
-                text("DELETE FROM orders WHERE id = :order_id"),
-                {"order_id": order_id}
-            )
-            await delete_session.execute(
-                text("DELETE FROM users WHERE id = :user_id"),
-                {"user_id": user_id}
-            )
-
 
 @pytest.mark.asyncio
 async def test_concurrent_payment_unsafe_demonstrates_race_condition(db_session, test_order, db_engine):
