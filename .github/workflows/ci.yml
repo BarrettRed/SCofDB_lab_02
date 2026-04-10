@@ -597,7 +597,7 @@ jobs:
       
       - name: Run integration tests
         env:
-          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/marketplace_test
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/marketplace_test
         run: |
           cd backend
           export PYTHONPATH=$(pwd)
